@@ -6,8 +6,27 @@ import (
 )
 
 func Setup(app *fiber.App) {
-	app.Post("/api/register", controller.Register)
-	app.Post("/api/login", controller.Login)
-	app.Get("/api/user", controller.GetUsers)
-	app.Post("/api/logout", controller.Logout)
+	g := app.Group("/api")
+	{
+		g.Post("/register", controller.Register)
+		g.Post("/login", controller.Login)
+		// g.Get("/user", controller.GetUsers)
+		g.Post("/logout", controller.Logout)
+
+		u :=g.Group("/user")
+		{
+			u.Get("/", controller.GetUsers)
+
+		p := u.Group("/post")
+			{
+				p.Get("/" , controller.GetPostsByUser)
+				p.Post("/new", controller.MakePost)
+				p.Get("/:id", controller.GetPostByUser)
+				p.Put("/:id", controller.UpdatePost)
+				p.Delete("/:id", controller.DeletePost)
+				
+			}
+		}
+	}
+
 }

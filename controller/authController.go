@@ -11,6 +11,7 @@ import (
 	"samplegoapp.com/models"
 )
 
+//TODO: add authorization handler, JWT secret
 const JWT_SECRET = "secret"
 
 func Register(c *fiber.Ctx) error {
@@ -103,4 +104,159 @@ func Logout(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{"message": "Logout successful"})
 
+}
+
+func MakePost(c *fiber.Ctx) error {
+	cookie := c.Cookies("jwt")
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(JWT_SECRET), nil
+	})
+
+	if err != nil {
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	var user models.User
+	db.DB.Where("id = ?", claims.Issuer).First(&user)
+
+	var post models.Post
+	if err := c.BodyParser(&post); err != nil {
+		return err
+	}
+
+	post.AuthorID = user.ID
+	post.CreatedAt = time.Now().Unix()
+	post.UpdatedAt = time.Now().Unix()
+
+	db.DB.Create(&post)
+
+	return c.JSON(post)
+}
+
+func GetPostsByUser(c *fiber.Ctx) error {
+	cookie := c.Cookies("jwt")
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(JWT_SECRET), nil
+	})
+
+	if err != nil {
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	var user models.User
+	db.DB.Where("id = ?", claims.Issuer).First(&user)
+
+	// return posts in order of creation
+
+
+	var posts []models.Post
+	db.DB.Where("author_id = ?", user.ID).Find(&posts)
+
+	return c.JSON(posts)
+}
+
+// get post by user and by param id
+func GetPostByUser(c *fiber.Ctx) error {
+	cookie := c.Cookies("jwt")
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(JWT_SECRET), nil
+	})
+
+	if err != nil {
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	var user models.User
+	db.DB.Where("id = ?", claims.Issuer).First(&user)
+
+	var post models.Post
+	id, _ := strconv.Atoi(c.Params("id"))
+
+	// try to find post by id if not found then return 404
+	db.DB.Where("id = ? AND author_id = ?", id, user.ID).First(&post)
+
+	if post.ID == 0 {
+		c.Status(fiber.StatusNotFound)
+		return c.JSON(fiber.Map{"message": "Post not found"})
+	}
+	return c.JSON(post)
+}
+
+func UpdatePost(c *fiber.Ctx) error {
+	cookie := c.Cookies("jwt")
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(JWT_SECRET), nil
+	})
+
+	if err != nil {
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	var user models.User
+	db.DB.Where("id = ?", claims.Issuer).First(&user)
+
+	var post models.Post
+	id, _ := strconv.Atoi(c.Params("id"))
+
+	// try to find post by id if not found then return 404
+	db.DB.Where("id = ? AND author_id = ?", id, user.ID).First(&post)
+
+	if post.ID == 0 {
+		c.Status(fiber.StatusNotFound)
+		return c.JSON(fiber.Map{"message": "Post not found"})
+	}
+
+	if err := c.BodyParser(&post); err != nil {
+		return err
+	}
+
+	post.UpdatedAt = time.Now().Unix()
+
+	db.DB.Save(&post)
+
+	return c.JSON(post)
+}
+
+func DeletePost(c *fiber.Ctx) error {
+	cookie := c.Cookies("jwt")
+	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(JWT_SECRET), nil
+	})
+
+	if err != nil {
+		c.Status(fiber.StatusUnauthorized)
+		return c.JSON(fiber.Map{"message": "Unauthorized"})
+	}
+
+	claims := token.Claims.(*jwt.StandardClaims)
+
+	var user models.User
+	db.DB.Where("id = ?", claims.Issuer).First(&user)
+
+	var post models.Post
+	id, _ := strconv.Atoi(c.Params("id"))
+
+	// try to find post by id if not found then return 404
+	db.DB.Where("id = ? AND author_id = ?", id, user.ID).First(&post)
+
+	if post.ID == 0 {
+		c.Status(fiber.StatusNotFound)
+		return c.JSON(fiber.Map{"message": "Post not found"})
+	}
+
+	db.DB.Delete(&post)
+
+	return c.JSON(fiber.Map{"message": "Post deleted"})
 }
