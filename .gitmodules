@@ -1,0 +1,3 @@
+[submodule "goblogFront"]
+	path = goblogFront
+	url = https://github.com/0brx/goblogFront

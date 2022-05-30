@@ -26,9 +26,18 @@ func Register(c *fiber.Ctx) error {
 		Email:    data["email"],
 		Password: password,
 	}
-	db.DB.Create(&user)
 
-	return c.JSON(user)
+	// check if email is already in use
+	var existingUser models.User
+	db.DB.Where("email = ?", user.Email).First(&existingUser)
+
+	if existingUser.ID != 0 {
+		c.Status(fiber.StatusConflict)
+		return c.JSON(fiber.Map{"message": "Email already in use"})
+	} else {
+		db.DB.Create(&user)
+		return c.JSON(user)
+	}
 }
 
 func Login(c *fiber.Ctx) error {
